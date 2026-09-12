@@ -1,0 +1,171 @@
+// Prisma schema for MediKiosk AI Clinical Intake Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  id                String             @id @default(uuid())
+  patientId         String             @unique // MK-2026-XXXXXX format
+  fullName          String
+  age               Int
+  gender            String
+  height            Float?
+  phone             String
+  email             String
+  address           String
+  preferredLanguage String             @default("en") // en, hi, kn
+  abhaId            String?
+  emergencyContact  String?
+  department        String             @default("General OPD")
+  ayushMode         Boolean            @default(false)
+  status            String             @default("Awaiting Doctor Review") // Registration Started, Intake In Progress, Intake Completed, Awaiting Doctor Review, Under Doctor Review, Doctor Suggestion Available, Completed
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  sessions          ClinicalSession[]
+  documents         MedicalDocument[]
+  summaries         AiSummary[]
+  redFlags          RedFlag[]
+  suggestions       DoctorSuggestion[]
+  consents          Consent[]
+  auditEvents       AuditEvent[]
+
+  @@map("patients")
+}
+
+model ClinicalSession {
+  id          String           @id @default(uuid())
+  patientId   String
+  patient     Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  status      String           @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, ABORTED
+  mode        String           @default("STANDARD") // STANDARD, AYUSH
+  consentId   String?
+  startedAt   DateTime         @default(now())
+  completedAt DateTime?
+
+  answers     ClinicalAnswer[]
+  redFlags    RedFlag[]
+
+  @@map("clinical_sessions")
+}
+
+model ClinicalAnswer {
+  id               String          @id @default(uuid())
+  sessionId        String
+  session          ClinicalSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId       String
+  questionText     String
+  answerText       String
+  originalLanguage String          @default("en")
+  inputMethod      String          @default("touch") // touch, voice, audio
+  category         String          @default("general") // complaint, hpi, pmh, psh, meds, allergies, ros, ayush
+  createdAt        DateTime        @default(now())
+
+  @@map("clinical_answers")
+}
+
+model MedicalDocument {
+  id           String              @id @default(uuid())
+  patientId    String
+  patient      Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  fileName     String
+  filePath     String
+  fileType     String              @default("prescription") // prescription, lab_report, discharge_summary, scan, general
+  documentDate String?
+  ocrStatus    String              @default("PENDING") // PENDING, COMPLETED, FAILED
+  ocrText      String?
+  createdAt    DateTime            @default(now())
+
+  extractions  DocumentExtraction[]
+
+  @@map("medical_documents")
+}
+
+model DocumentExtraction {
+  id                 String          @id @default(uuid())
+  documentId         String
+  document           MedicalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  extractedData      String          // JSON stringified extraction result
+  confidence         Float           @default(0.85)
+  verificationStatus String          @default("UNVERIFIED") // UNVERIFIED, VERIFIED, REJECTED
+  createdAt          DateTime        @default(now())
+
+  @@map("document_extractions")
+}
+
+model AiSummary {
+  id                String   @id @default(uuid())
+  patientId         String
+  patient           Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  summaryJson       String   // JSON string of structured summary
+  model             String   @default("gpt-4o-mini-heuristic")
+  physicianVerified Boolean  @default(false)
+  verifiedBy        String?
+  verifiedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("ai_summaries")
+}
+
+model RedFlag {
+  id           String           @id @default(uuid())
+  patientId    String
+  patient      Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  sessionId    String?
+  session      ClinicalSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  severity     String           @default("HIGH") // HIGH, CRITICAL, MEDIUM
+  category     String           // Cardiac, Respiratory, Neurological, Hemorrhagic, etc.
+  triggerText  String
+  message      String
+  acknowledged Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+
+  @@map("red_flags")
+}
+
+model DoctorSuggestion {
+  id            String    @id @default(uuid())
+  patientId     String
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId      String    @default("dr_default")
+  suggestion    String
+  instructions  String?
+  followUpDate  String?
+  sentToPatient Boolean   @default(false)
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("doctor_suggestions")
+}
+
+model Consent {
+  id            String   @id @default(uuid())
+  patientId     String
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  consentStatus String   @default("GRANTED")
+  consentVersion String  @default("v1.0-DPDP-ABDM")
+  purpose       String   @default("Clinical Intake and Physician Review")
+  timestamp     DateTime @default(now())
+
+  @@map("consents")
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  patientId   String?
+  patient     Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  eventType   String   // PATIENT_CREATED, CONSENT_GRANTED, INTAKE_COMPLETED, DOCTOR_REVIEWED, SUGGESTION_SENT, PATIENT_DELETED
+  description String
+  actor       String   @default("PATIENT") // PATIENT, DOCTOR, SYSTEM
+  timestamp   DateTime @default(now())
+
+  @@map("audit_events")
+}

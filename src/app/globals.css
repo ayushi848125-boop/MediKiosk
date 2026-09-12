@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-main: #f8fafc;
+    --text-main: #0f172a;
+    --font-scale: 100%;
+  }
+
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    font-size: var(--font-scale);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* High Contrast Accessibility Mode Override */
+.high-contrast {
+  --bg-main: #000000 !important;
+  --text-main: #ffff00 !important;
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+}
+
+.high-contrast header,
+.high-contrast nav,
+.high-contrast div,
+.high-contrast section,
+.high-contrast article,
+.high-contrast form,
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea,
+.high-contrast button {
+  border-color: #ffff00 !important;
+}
+
+.high-contrast button {
+  color: #ffff00 !important;
+  background-color: #000000 !important;
+}
+
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea {
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+}
+
+/* Font scale classes */
+.text-scale-sm { font-size: 90% !important; }
+.text-scale-base { font-size: 100% !important; }
+.text-scale-lg { font-size: 115% !important; }
+
+/* Focus ring accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #0284c7 !important;
+  outline-offset: 2px !important;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
